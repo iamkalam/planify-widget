@@ -1,4 +1,6 @@
 import gi
+from matplotlib.pyplot import title
+from sympy import root
 from database import get_tasks, update_task
 from ui.task_row import TaskRow
 
@@ -25,25 +27,50 @@ class MainWindow(Adw.ApplicationWindow):
 
     def build_ui(self):
 
-        scroll = Gtk.ScrolledWindow()
+        root = Gtk.Box(
+        orientation=Gtk.Orientation.VERTICAL,
+        spacing=12,
+        margin_top=15,
+        margin_bottom=15,
+        margin_start=15,
+        margin_end=15,
+    )
 
-        box = Gtk.Box(
-            orientation=Gtk.Orientation.VERTICAL,
-            spacing=8,
-            margin_top=15,
-            margin_bottom=15,
-            margin_start=15,
-            margin_end=15,
-        )
+    # Title
+        title = Gtk.Label()
+        title.set_markup("<span size='18000'><b>📋 Planify Widget</b></span>")
+        title.set_xalign(0)
+
+        root.append(title)
+
+        # Placeholder
+        info = Gtk.Label(label="0 / 0 Tasks Completed")
+        info.set_xalign(0)
+
+        root.append(info)
+
+        # Scroll Area
+        scroll = Gtk.ScrolledWindow()
+        scroll.set_vexpand(True)
+
+        task_box = Gtk.Box(
+        orientation=Gtk.Orientation.VERTICAL,
+        spacing=8
+    )
 
         tasks = get_tasks()
 
         for task in tasks:
-
             row = TaskRow(*task)
+            task_box.append(row)
 
-            box.append(row)
+        scroll.set_child(task_box)
 
-        scroll.set_child(box)
+        root.append(scroll)
 
-        return scroll
+        # Footer Button
+        add_button = Gtk.Button(label="+ Add Task")
+
+        root.append(add_button)
+
+        return root
