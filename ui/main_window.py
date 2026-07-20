@@ -1,11 +1,11 @@
 import gi
-import os 
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw, GLib, Gio  # Gio must be imported
+from gi.repository import Gtk, Adw, GLib, Gio
 from controllers.task_controller import TaskController
 from ui.task_card import TaskCard
 from ui.task_dialog import TaskDialog
+import os
 
 class MainWindow(Adw.ApplicationWindow):
     def __init__(self, app):
@@ -14,9 +14,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.controller = TaskController()
         self._last_stats = None
         self._refresh_pending = False
+        self.active_filter = "all"
+        self.filter_buttons = {}
         
         self.set_title("Planify Widget")
-        self.set_default_size(400, 600)
+        self.set_default_size(420, 650)
         
         self.build_ui()
         self.refresh_tasks()
@@ -29,7 +31,7 @@ class MainWindow(Adw.ApplicationWindow):
         # Main vertical box
         self.main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
         
-        # Header with sync status
+        # Header
         header = Adw.HeaderBar()
         header.add_css_class("flat")
         
@@ -39,37 +41,92 @@ class MainWindow(Adw.ApplicationWindow):
         self.sync_label.add_css_class("sync-status")
         header.pack_start(self.sync_label)
         
-        # Filter button
-        filter_button = Gtk.MenuButton()
-        filter_button.set_icon_name("view-list-symbolic")
-        
-        filter_menu = Gio.Menu()
-        filter_menu.append("All Tasks", "app.filter::all")
-        filter_menu.append("Today", "app.filter::today")
-        filter_menu.append("Upcoming", "app.filter::upcoming")
-        filter_menu.append("Overdue", "app.filter::overdue")
-        filter_menu.append("Completed", "app.filter::completed")
-        filter_menu.append("High Priority", "app.filter::high_priority")
-        
-        filter_button.set_menu_model(filter_menu)
-        header.pack_end(filter_button)
+        # Project filter button
+        self.project_button = Gtk.MenuButton()
+        self.project_button.set_icon_name("folder-symbolic")
+        self.project_button.set_tooltip_text("Filter by project")
+        header.pack_end(self.project_button)
         
         self.main_box.append(header)
         
+        # Search bar
+        search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
+        search_box.set_margin_start(12)
+        search_box.set_margin_end(12)
+        search_box.set_margin_top(8)
+        search_box.set_margin_bottom(2)
+        
+        self.search_entry = Gtk.SearchEntry()
+        self.search_entry.set_placeholder_text("Search tasks...")
+        self.search_entry.connect("search-changed", self.on_search_changed)
+        self.search_entry.set_hexpand(True)
+        self.search_entry.set_size_request(-1, 32)  # Make search bar shorter
+        
+        # Clear search button
+        clear_button = Gtk.Button()
+        clear_button.set_icon_name("edit-clear-symbolic")
+        clear_button.add_css_class("flat")
+        clear_button.set_tooltip_text("Clear search")
+        clear_button.connect("clicked", self.on_clear_search)
+        
+        search_box.append(self.search_entry)
+        search_box.append(clear_button)
+        
+        self.main_box.append(search_box)
+        
+        # Filter chips in a FlowBox for wrapping
+        filter_frame = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
+        filter_frame.set_margin_start(8)
+        filter_frame.set_margin_end(8)
+        filter_frame.set_margin_top(2)
+        filter_frame.set_margin_bottom(2)
+        
+        self.filter_flowbox = Gtk.FlowBox()
+        self.filter_flowbox.set_homogeneous(False)
+        self.filter_flowbox.set_row_spacing(4)
+        self.filter_flowbox.set_column_spacing(4)
+        self.filter_flowbox.set_max_children_per_line(10)
+        self.filter_flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
+        self.filter_flowbox.set_hexpand(True)
+        
+        # Create filter chips
+        filters = [
+            ("all", "All", "view-list-symbolic"),
+            ("active", "Active", "task-due-symbolic"),
+            ("today", "Today", "starred-symbolic"),
+            ("upcoming", "Upcoming", "go-up-symbolic"),
+            ("overdue", "Overdue", "dialog-warning-symbolic"),
+            ("completed", "Done", "emblem-ok-symbolic"),
+            ("high_priority", "Priority", "important-symbolic"),
+        ]
+        
+        for filter_id, label, icon in filters:
+            chip = self.create_filter_chip(filter_id, label, icon)
+            self.filter_buttons[filter_id] = chip
+            self.filter_flowbox.append(chip)
+        
+        # Set "All" as active by default
+        if "all" in self.filter_buttons:
+            self.filter_buttons["all"].add_css_class("filter-chip-active")
+        
+        filter_frame.append(self.filter_flowbox)
+        self.main_box.append(filter_frame)
+        
         # Statistics section
-        stats_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        stats_box.set_margin_top(12)
-        stats_box.set_margin_bottom(12)
+        stats_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        stats_box.set_margin_top(2)
+        stats_box.set_margin_bottom(4)
         stats_box.set_margin_start(24)
         stats_box.set_margin_end(24)
         
         self.stats_label = Gtk.Label()
-        self.stats_label.add_css_class("title-4")
+        self.stats_label.add_css_class("stats-label")
         self.stats_label.set_halign(Gtk.Align.CENTER)
         
         self.progress_bar = Gtk.ProgressBar()
         self.progress_bar.set_show_text(True)
         self.progress_bar.add_css_class("osd")
+        self.progress_bar.set_size_request(-1, 6)  # Thinner progress bar
         
         stats_box.append(self.stats_label)
         stats_box.append(self.progress_bar)
@@ -78,13 +135,23 @@ class MainWindow(Adw.ApplicationWindow):
         
         # Separator
         separator = Gtk.Separator(orientation=Gtk.Orientation.HORIZONTAL)
+        separator.set_margin_top(2)
+        separator.set_margin_bottom(2)
         self.main_box.append(separator)
         
+        # Results count
+        self.results_label = Gtk.Label()
+        self.results_label.set_halign(Gtk.Align.CENTER)
+        self.results_label.add_css_class("results-count")
+        self.results_label.set_margin_top(2)
+        self.results_label.set_margin_bottom(2)
+        self.main_box.append(self.results_label)
+        
         # Tasks list
-        self.task_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
-        self.task_list.set_margin_top(12)
-        self.task_list.set_margin_start(12)
-        self.task_list.set_margin_end(12)
+        self.task_list = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
+        self.task_list.set_margin_top(2)
+        self.task_list.set_margin_start(6)
+        self.task_list.set_margin_end(6)
         
         scrolled_window = Gtk.ScrolledWindow()
         scrolled_window.set_vexpand(True)
@@ -93,11 +160,20 @@ class MainWindow(Adw.ApplicationWindow):
         
         self.main_box.append(scrolled_window)
         
+        # Empty state
+        self.empty_label = Gtk.Label(label="No tasks found")
+        self.empty_label.set_halign(Gtk.Align.CENTER)
+        self.empty_label.set_valign(Gtk.Align.CENTER)
+        self.empty_label.add_css_class("empty-state")
+        self.empty_label.set_vexpand(True)
+        self.empty_label.set_visible(False)
+        self.main_box.append(self.empty_label)
+        
         # Add task button
         add_button = Gtk.Button(label="+ Add Task")
         add_button.add_css_class("suggested-action")
-        add_button.set_margin_top(12)
-        add_button.set_margin_bottom(12)
+        add_button.set_margin_top(6)
+        add_button.set_margin_bottom(8)
         add_button.set_margin_start(24)
         add_button.set_margin_end(24)
         add_button.connect("clicked", self.on_add_task)
@@ -105,6 +181,56 @@ class MainWindow(Adw.ApplicationWindow):
         self.main_box.append(add_button)
         
         self.set_content(self.main_box)
+    
+    def create_filter_chip(self, filter_id, label, icon_name):
+        """Create a compact filter chip button"""
+        button = Gtk.Button()
+        
+        # Create chip content
+        chip_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        
+        if icon_name:
+            icon = Gtk.Image.new_from_icon_name(icon_name)
+            icon.set_pixel_size(14)  # Smaller icons
+            icon.add_css_class("filter-icon")
+            chip_box.append(icon)
+        
+        label_widget = Gtk.Label(label=label)
+        label_widget.add_css_class("filter-label")
+        chip_box.append(label_widget)
+        
+        button.set_child(chip_box)
+        button.add_css_class("filter-chip")
+        button.set_tooltip_text(f"Show {label.lower()} tasks")
+        button.connect("clicked", self.on_filter_changed, filter_id)
+        
+        return button
+    
+    def on_filter_changed(self, button, filter_id):
+        """Handle filter chip click"""
+        self.active_filter = filter_id
+        
+        # Update chip styles
+        for fid, chip in self.filter_buttons.items():
+            if fid == filter_id:
+                chip.add_css_class("filter-chip-active")
+            else:
+                chip.remove_css_class("filter-chip-active")
+        
+        # Refresh tasks with filter
+        filter_type = None if filter_id == "all" else filter_id
+        search_query = self.search_entry.get_text().strip() or None
+        self.refresh_tasks(filter_type, search_query)
+    
+    def on_search_changed(self, search_entry):
+        """Handle search entry changes"""
+        search_query = search_entry.get_text().strip() or None
+        filter_type = None if self.active_filter == "all" else self.active_filter
+        self.refresh_tasks(filter_type, search_query)
+    
+    def on_clear_search(self, button):
+        """Clear search entry"""
+        self.search_entry.set_text("")
     
     def start_file_monitor(self):
         """Watch the Planify database file for changes"""
@@ -117,11 +243,10 @@ class MainWindow(Adw.ApplicationWindow):
             return
         
         try:
-            # Create a file monitor
             gfile = Gio.File.new_for_path(db_path)
             self.db_monitor = gfile.monitor_file(
                 Gio.FileMonitorFlags.WATCH_MOVES,
-                None  # Cancellable
+                None
             )
             
             if self.db_monitor:
@@ -138,47 +263,16 @@ class MainWindow(Adw.ApplicationWindow):
     
     def on_database_changed(self, monitor, file, other_file, event_type):
         """Handle database file changes from Planify"""
-        # Map event types to readable names
-        event_names = {
-            Gio.FileMonitorEvent.CHANGED: "CHANGED",
-            Gio.FileMonitorEvent.CHANGES_DONE_HINT: "CHANGES_DONE",
-            Gio.FileMonitorEvent.DELETED: "DELETED",
-            Gio.FileMonitorEvent.CREATED: "CREATED",
-            Gio.FileMonitorEvent.ATTRIBUTE_CHANGED: "ATTR_CHANGED",
-            Gio.FileMonitorEvent.PRE_UNMOUNT: "PRE_UNMOUNT",
-            Gio.FileMonitorEvent.UNMOUNTED: "UNMOUNTED",
-            Gio.FileMonitorEvent.MOVED: "MOVED",
-            Gio.FileMonitorEvent.RENAMED: "RENAMED",
-            Gio.FileMonitorEvent.MOVED_IN: "MOVED_IN",
-            Gio.FileMonitorEvent.MOVED_OUT: "MOVED_OUT",
-        }
-        
-        event_name = event_names.get(event_type, f"UNKNOWN({event_type})")
-        print(f"Database event: {event_name}")
-        
-        # React to relevant events
-        if event_type == Gio.FileMonitorEvent.CHANGES_DONE_HINT:
-            # Planify finished writing changes - perfect time to refresh
-            self.schedule_refresh()
-        elif event_type == Gio.FileMonitorEvent.CHANGED:
-            # Database was modified - schedule a refresh with debounce
-            self.schedule_refresh()
-        elif event_type == Gio.FileMonitorEvent.DELETED:
-            # Database was deleted - show warning
-            self.sync_label.set_text("❌")
-            print("Database file was deleted!")
-        elif event_type == Gio.FileMonitorEvent.CREATED:
-            # Database was recreated - refresh and restart monitor
-            self.sync_label.set_text("🔄")
+        if event_type in (Gio.FileMonitorEvent.CHANGES_DONE_HINT, 
+                          Gio.FileMonitorEvent.CHANGED,
+                          Gio.FileMonitorEvent.CREATED):
             self.schedule_refresh()
     
     def schedule_refresh(self):
-        """Schedule a UI refresh with debouncing to avoid excessive updates"""
-        # Remove any pending refresh
+        """Schedule a UI refresh with debouncing"""
         if self._refresh_pending:
             GLib.source_remove(self._refresh_timeout_id)
         
-        # Schedule new refresh with 500ms delay to batch changes
         self._refresh_timeout_id = GLib.timeout_add(500, self._do_refresh)
         self._refresh_pending = True
     
@@ -186,16 +280,16 @@ class MainWindow(Adw.ApplicationWindow):
         """Perform the actual refresh"""
         self._refresh_pending = False
         
-        # Update sync indicator
         self.sync_label.set_text("🔄")
         GLib.timeout_add(1000, lambda: self.sync_label.set_text("✅"))
         
-        # Refresh the task list
-        self.refresh_tasks()
+        filter_type = None if self.active_filter == "all" else self.active_filter
+        search_query = self.search_entry.get_text().strip() or None
+        self.refresh_tasks(filter_type, search_query)
         
-        return False  # Don't repeat
+        return False
     
-    def refresh_tasks(self, filter_type=None):
+    def refresh_tasks(self, filter_type=None, search_query=None):
         """Refresh the task list and statistics"""
         # Clear existing task cards
         while True:
@@ -206,19 +300,37 @@ class MainWindow(Adw.ApplicationWindow):
         
         try:
             # Get tasks and statistics
-            tasks = self.controller.get_tasks(filter_type)
+            tasks = self.controller.get_tasks(filter_type, search_query)
             stats = self.controller.get_statistics()
             
             # Update statistics
             self.update_statistics(stats)
             
-            # Create task cards
-            for task in tasks:
-                task_card = TaskCard(task)
-                task_card.connect("task-toggled", self.on_task_toggled)
-                task_card.connect("task-edit", self.on_task_edit)
-                task_card.connect("task-delete", self.on_task_delete)
-                self.task_list.append(task_card)
+            # Update results count
+            task_count = len(tasks)
+            if search_query:
+                self.results_label.set_text(f"{task_count} task{'s' if task_count != 1 else ''} found")
+                self.results_label.set_visible(True)
+            else:
+                self.results_label.set_visible(False)
+            
+            # Show empty state if no tasks
+            if task_count == 0:
+                self.empty_label.set_visible(True)
+                if search_query:
+                    self.empty_label.set_label(f"No tasks matching '{search_query}'")
+                else:
+                    self.empty_label.set_label("No tasks found")
+            else:
+                self.empty_label.set_visible(False)
+                
+                # Create task cards
+                for task in tasks:
+                    task_card = TaskCard(task)
+                    task_card.connect("task-toggled", self.on_task_toggled)
+                    task_card.connect("task-edit", self.on_task_edit)
+                    task_card.connect("task-delete", self.on_task_delete)
+                    self.task_list.append(task_card)
                 
         except Exception as e:
             print(f"Error refreshing tasks: {e}")
@@ -227,8 +339,16 @@ class MainWindow(Adw.ApplicationWindow):
         """Update statistics display"""
         completed = stats['completed']
         total = stats['total']
+        overdue = stats.get('overdue', 0)
+        today = stats.get('today', 0)
         
-        self.stats_label.set_text(f"{completed} / {total} Tasks Completed")
+        stats_text = f"{completed} / {total} Completed"
+        if overdue > 0:
+            stats_text += f"  •  {overdue} Overdue"
+        if today > 0:
+            stats_text += f"  •  {today} Today"
+        
+        self.stats_label.set_text(stats_text)
         
         if total > 0:
             fraction = completed / total
@@ -242,10 +362,9 @@ class MainWindow(Adw.ApplicationWindow):
         """Handle task completion toggle"""
         try:
             self.controller.toggle_task(task_id, checked)
-            # Update statistics immediately
-            stats = self.controller.get_statistics()
-            self.update_statistics(stats)
-            # Update sync indicator
+            filter_type = None if self.active_filter == "all" else self.active_filter
+            search_query = self.search_entry.get_text().strip() or None
+            self.refresh_tasks(filter_type, search_query)
             self.sync_label.set_text("✅")
         except Exception as e:
             print(f"Error toggling task: {e}")
@@ -258,7 +377,6 @@ class MainWindow(Adw.ApplicationWindow):
     def on_task_edit(self, task_card, task_id):
         """Open edit task dialog"""
         try:
-            # Find the task data
             tasks = self.controller.get_tasks()
             task = next((t for t in tasks if t[0] == task_id), None)
             
@@ -284,7 +402,9 @@ class MainWindow(Adw.ApplicationWindow):
                 if response == "delete":
                     try:
                         self.controller.delete_task(task_id)
-                        self.refresh_tasks()
+                        filter_type = None if self.active_filter == "all" else self.active_filter
+                        search_query = self.search_entry.get_text().strip() or None
+                        self.refresh_tasks(filter_type, search_query)
                         self.sync_label.set_text("✅")
                     except Exception as e:
                         print(f"Error deleting task: {e}")
@@ -298,29 +418,8 @@ class MainWindow(Adw.ApplicationWindow):
     
     def on_destroy(self):
         """Clean up when window is destroyed"""
-        # Cancel file monitor
         if hasattr(self, 'db_monitor') and self.db_monitor:
             self.db_monitor.cancel()
         
-        # Remove any pending refresh
         if self._refresh_pending:
             GLib.source_remove(self._refresh_timeout_id)
-            
-            
-    def start_file_monitor(self):
-        """Watch database file for changes"""
-        from config import DATABASE
-        db_path = str(DATABASE)
-        
-        file = Gio.File.new_for_path(db_path)
-        self.monitor = file.monitor_file(Gio.FileMonitorFlags.NONE, None)
-        self.monitor.connect("changed", self.on_database_changed)
-        print("File monitor started - watching for Planify changes")
-    
-    def on_database_changed(self, monitor, file, other_file, event_type):
-        """Handle database file changes"""
-        if event_type in (Gio.FileMonitorEvent.CHANGED, 
-                           Gio.FileMonitorEvent.CREATED,
-                           Gio.FileMonitorEvent.DELETED):
-            print("Planify modified the database, refreshing...")
-            self.refresh_tasks()
