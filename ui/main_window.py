@@ -1,9 +1,7 @@
 import gi
-from matplotlib.pyplot import title
 from sympy import root
 from database import get_tasks, update_task
-from ui.task_row import TaskRow
-
+from ui.task_card import TaskCard
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
@@ -61,8 +59,8 @@ class MainWindow(Adw.ApplicationWindow):
         tasks = get_tasks()
 
         for task in tasks:
-            row = TaskRow(*task)
-            task_box.append(row)
+            card = TaskCard(*task)
+            task_box.append(card)
 
         scroll.set_child(task_box)
 
