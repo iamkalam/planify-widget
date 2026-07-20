@@ -46,3 +46,27 @@ def update_task(task_id, checked):
     conn.commit()
 
     conn.close()
+def get_statistics():
+    conn = connect()
+    cursor = conn.cursor()
+
+    # Total tasks
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM Items
+        WHERE is_deleted = 0
+    """)
+    total = cursor.fetchone()[0]
+
+    # Completed tasks
+    cursor.execute("""
+        SELECT COUNT(*)
+        FROM Items
+        WHERE checked = 1
+          AND is_deleted = 0
+    """)
+    completed = cursor.fetchone()[0]
+
+    conn.close()
+
+    return completed, total

@@ -3,12 +3,18 @@ import gi
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 
-from gi.repository import Gtk
-
-from database import update_task
+from gi.repository import Gtk, GObject
 
 
 class TaskCard(Gtk.Frame):
+
+    __gsignals__ = {
+        "task-toggled": (
+            GObject.SignalFlags.RUN_FIRST,
+            None,
+            (int, bool),
+        )
+    }
 
     def __init__(self, task_id, content, checked, priority):
 
@@ -77,7 +83,8 @@ class TaskCard(Gtk.Frame):
 
     def on_toggled(self, checkbox):
 
-        update_task(
+        self.emit(
+            "task-toggled",
             self.task_id,
             checkbox.get_active()
         )
