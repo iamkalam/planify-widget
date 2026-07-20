@@ -1,3 +1,39 @@
+/* Widget mode window */
+.widget-mode {
+    background: alpha(@window_bg_color, 0.85);
+    border-radius: 16px;
+    border: 1px solid alpha(@borders, 0.4);
+    box-shadow: 0 8px 32px alpha(black, 0.3);
+    backdrop-filter: blur(20px);
+}
+
+.main-container {
+    background: transparent;
+}
+
+/* Widget header */
+.widget-header {
+    background: transparent;
+    min-height: 36px;
+}
+
+/* Resize handle */
+.resize-handle {
+    background: alpha(@accent_bg_color, 0.3);
+    border-radius: 0 0 16px 0;
+    min-width: 20px;
+    min-height: 20px;
+    margin: 0;
+}
+
+.resize-handle:hover {
+    background: alpha(@accent_bg_color, 0.6);
+}
+
+.resize-handle.widget-mode {
+    opacity: 0.8;
+}
+
 /* Main task card */
 .task-card {
     background: alpha(@card_bg_color, 0.8);
@@ -98,7 +134,7 @@
     opacity: 0.8;
 }
 
-/* Filter chips - COMPACT */
+/* Filter chips */
 .filter-chip {
     padding: 3px 10px;
     border-radius: 14px;

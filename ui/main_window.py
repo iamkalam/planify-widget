@@ -1,7 +1,7 @@
 import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
-from gi.repository import Gtk, Adw, GLib, Gio
+from gi.repository import Gtk, Adw, GLib, Gio, Gdk
 from controllers.task_controller import TaskController
 from ui.task_card import TaskCard
 from ui.task_dialog import TaskDialog
@@ -16,24 +16,145 @@ class MainWindow(Adw.ApplicationWindow):
         self._refresh_pending = False
         self.active_filter = "all"
         self.filter_buttons = {}
+        self.widget_mode = False
+        self.widget_overlay = None
         
         self.set_title("Planify Widget")
         self.set_default_size(420, 650)
         
         self.build_ui()
+        self.setup_shortcuts()
         self.refresh_tasks()
         
         # Start file monitoring for live sync
         self.start_file_monitor()
     
+    def setup_shortcuts(self):
+        """Setup keyboard shortcuts"""
+        key_controller = Gtk.EventControllerKey.new()
+        key_controller.connect("key-pressed", self.on_key_pressed)
+        self.add_controller(key_controller)
+    
+    def on_key_pressed(self, controller, keyval, keycode, state):
+        """Handle keyboard shortcuts"""
+        # Ctrl+W to toggle widget mode
+        if keyval == Gdk.KEY_w and (state & Gdk.ModifierType.CONTROL_MASK):
+            self.toggle_widget_mode()
+            return True
+        # Escape to exit widget mode
+        elif keyval == Gdk.KEY_Escape and self.widget_mode:
+            self.toggle_widget_mode()
+            return True
+        return False
+    
+    def toggle_widget_mode(self):
+        """Toggle between widget mode and normal window"""
+        self.widget_mode = not self.widget_mode
+        
+        if self.widget_mode:
+            self.enter_widget_mode()
+        else:
+            self.exit_widget_mode()
+    
+    def enter_widget_mode(self):
+        """Enter desktop widget mode"""
+        print("Entering widget mode...")
+        
+        # Remove window decorations (title bar, borders)
+        self.set_decorated(False)
+        
+        # Add widget mode styling
+        self.add_css_class("widget-mode")
+        
+        # Set opacity for translucency
+        self.set_opacity(0.92)
+        
+        # Make smaller for widget mode
+        self.set_default_size(350, 500)
+        
+        # Remove main_box from current parent if it has one
+        parent = self.main_box.get_parent()
+        if parent:
+            parent.remove(self.main_box)
+        
+        # Create resize handle
+        self.resize_handle = Gtk.Box()
+        self.resize_handle.set_size_request(20, 20)
+        self.resize_handle.add_css_class("resize-handle")
+        
+        # Setup resize gesture
+        resize_gesture = Gtk.GestureDrag.new()
+        resize_gesture.connect("drag-begin", self.on_resize_begin)
+        resize_gesture.connect("drag-update", self.on_resize_update)
+        self.resize_handle.add_controller(resize_gesture)
+        
+        # Create overlay with main content and resize handle
+        self.widget_overlay = Gtk.Overlay()
+        self.widget_overlay.set_child(self.main_box)
+        self.widget_overlay.add_overlay(self.resize_handle)
+        self.resize_handle.set_halign(Gtk.Align.END)
+        self.resize_handle.set_valign(Gtk.Align.END)
+        self.set_content(self.widget_overlay)
+        
+        print("Widget mode activated! Press Escape or Ctrl+W to exit.")
+    
+    def exit_widget_mode(self):
+        """Exit desktop widget mode"""
+        print("Exiting widget mode...")
+        
+        # Restore window decorations
+        self.set_decorated(True)
+        
+        # Remove widget mode styling
+        self.remove_css_class("widget-mode")
+        
+        # Restore full opacity
+        self.set_opacity(1.0)
+        
+        # Restore normal window size
+        self.set_default_size(420, 650)
+        
+        # Remove main_box from overlay if it exists
+        if self.widget_overlay:
+            self.widget_overlay.remove(self.main_box)
+            self.widget_overlay = None
+        
+        # Set main_box directly as content
+        self.set_content(self.main_box)
+        
+        print("Widget mode deactivated!")
+    
+    def on_resize_begin(self, gesture, x, y):
+        """Start resizing the window"""
+        if self.widget_mode:
+            self._resize_start_width = self.get_width()
+            self._resize_start_height = self.get_height()
+    
+    def on_resize_update(self, gesture, x, y):
+        """Update window size while resizing"""
+        if self.widget_mode and hasattr(self, '_resize_start_width'):
+            new_width = max(300, self._resize_start_width + int(x))
+            new_height = max(400, self._resize_start_height + int(y))
+            self.set_default_size(new_width, new_height)
+    
     def build_ui(self):
         """Build the main window UI"""
         # Main vertical box
         self.main_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        self.main_box.add_css_class("main-container")
         
         # Header
         header = Adw.HeaderBar()
         header.add_css_class("flat")
+        header.add_css_class("widget-header")
+        
+        # Widget mode toggle button
+        widget_button = Gtk.Button()
+        widget_button.set_icon_name("window-pop-out-symbolic")
+        widget_button.add_css_class("flat")
+        widget_button.set_tooltip_text("Toggle Widget Mode (Ctrl+W)")
+        widget_button.connect("clicked", lambda b: self.toggle_widget_mode())
+        header.pack_start(widget_button)
         
         # Sync status indicator
         self.sync_label = Gtk.Label()
@@ -53,16 +174,15 @@ class MainWindow(Adw.ApplicationWindow):
         search_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=6)
         search_box.set_margin_start(12)
         search_box.set_margin_end(12)
-        search_box.set_margin_top(8)
+        search_box.set_margin_top(6)
         search_box.set_margin_bottom(2)
         
         self.search_entry = Gtk.SearchEntry()
         self.search_entry.set_placeholder_text("Search tasks...")
         self.search_entry.connect("search-changed", self.on_search_changed)
         self.search_entry.set_hexpand(True)
-        self.search_entry.set_size_request(-1, 32)  # Make search bar shorter
+        self.search_entry.set_size_request(-1, 32)
         
-        # Clear search button
         clear_button = Gtk.Button()
         clear_button.set_icon_name("edit-clear-symbolic")
         clear_button.add_css_class("flat")
@@ -74,7 +194,7 @@ class MainWindow(Adw.ApplicationWindow):
         
         self.main_box.append(search_box)
         
-        # Filter chips in a FlowBox for wrapping
+        # Filter chips
         filter_frame = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=0)
         filter_frame.set_margin_start(8)
         filter_frame.set_margin_end(8)
@@ -89,7 +209,6 @@ class MainWindow(Adw.ApplicationWindow):
         self.filter_flowbox.set_selection_mode(Gtk.SelectionMode.NONE)
         self.filter_flowbox.set_hexpand(True)
         
-        # Create filter chips
         filters = [
             ("all", "All", "view-list-symbolic"),
             ("active", "Active", "task-due-symbolic"),
@@ -105,16 +224,15 @@ class MainWindow(Adw.ApplicationWindow):
             self.filter_buttons[filter_id] = chip
             self.filter_flowbox.append(chip)
         
-        # Set "All" as active by default
         if "all" in self.filter_buttons:
             self.filter_buttons["all"].add_css_class("filter-chip-active")
         
         filter_frame.append(self.filter_flowbox)
         self.main_box.append(filter_frame)
         
-        # Statistics section
+        # Statistics
         stats_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        stats_box.set_margin_top(2)
+        stats_box.set_margin_top(4)
         stats_box.set_margin_bottom(4)
         stats_box.set_margin_start(24)
         stats_box.set_margin_end(24)
@@ -126,7 +244,7 @@ class MainWindow(Adw.ApplicationWindow):
         self.progress_bar = Gtk.ProgressBar()
         self.progress_bar.set_show_text(True)
         self.progress_bar.add_css_class("osd")
-        self.progress_bar.set_size_request(-1, 6)  # Thinner progress bar
+        self.progress_bar.set_size_request(-1, 6)
         
         stats_box.append(self.stats_label)
         stats_box.append(self.progress_bar)
@@ -186,12 +304,11 @@ class MainWindow(Adw.ApplicationWindow):
         """Create a compact filter chip button"""
         button = Gtk.Button()
         
-        # Create chip content
         chip_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         
         if icon_name:
             icon = Gtk.Image.new_from_icon_name(icon_name)
-            icon.set_pixel_size(14)  # Smaller icons
+            icon.set_pixel_size(14)
             icon.add_css_class("filter-icon")
             chip_box.append(icon)
         
@@ -210,14 +327,12 @@ class MainWindow(Adw.ApplicationWindow):
         """Handle filter chip click"""
         self.active_filter = filter_id
         
-        # Update chip styles
         for fid, chip in self.filter_buttons.items():
             if fid == filter_id:
                 chip.add_css_class("filter-chip-active")
             else:
                 chip.remove_css_class("filter-chip-active")
         
-        # Refresh tasks with filter
         filter_type = None if filter_id == "all" else filter_id
         search_query = self.search_entry.get_text().strip() or None
         self.refresh_tasks(filter_type, search_query)
@@ -291,7 +406,6 @@ class MainWindow(Adw.ApplicationWindow):
     
     def refresh_tasks(self, filter_type=None, search_query=None):
         """Refresh the task list and statistics"""
-        # Clear existing task cards
         while True:
             child = self.task_list.get_first_child()
             if child is None:
@@ -299,14 +413,11 @@ class MainWindow(Adw.ApplicationWindow):
             self.task_list.remove(child)
         
         try:
-            # Get tasks and statistics
             tasks = self.controller.get_tasks(filter_type, search_query)
             stats = self.controller.get_statistics()
             
-            # Update statistics
             self.update_statistics(stats)
             
-            # Update results count
             task_count = len(tasks)
             if search_query:
                 self.results_label.set_text(f"{task_count} task{'s' if task_count != 1 else ''} found")
@@ -314,7 +425,6 @@ class MainWindow(Adw.ApplicationWindow):
             else:
                 self.results_label.set_visible(False)
             
-            # Show empty state if no tasks
             if task_count == 0:
                 self.empty_label.set_visible(True)
                 if search_query:
@@ -324,7 +434,6 @@ class MainWindow(Adw.ApplicationWindow):
             else:
                 self.empty_label.set_visible(False)
                 
-                # Create task cards
                 for task in tasks:
                     task_card = TaskCard(task)
                     task_card.connect("task-toggled", self.on_task_toggled)
@@ -415,11 +524,3 @@ class MainWindow(Adw.ApplicationWindow):
             
         except Exception as e:
             print(f"Error showing delete dialog: {e}")
-    
-    def on_destroy(self):
-        """Clean up when window is destroyed"""
-        if hasattr(self, 'db_monitor') and self.db_monitor:
-            self.db_monitor.cancel()
-        
-        if self._refresh_pending:
-            GLib.source_remove(self._refresh_timeout_id)

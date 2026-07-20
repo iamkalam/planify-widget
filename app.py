@@ -14,6 +14,8 @@ class PlanifyWidgetApp(Adw.Application):
         )
         
         self.create_action("filter", self.on_filter, GLib.VariantType("s"))
+        self.create_action("toggle_widget_mode", self.on_toggle_widget_mode)
+        self.create_action("quit", self.on_quit)
     
     def do_activate(self):
         """Activate the application"""
@@ -21,15 +23,13 @@ class PlanifyWidgetApp(Adw.Application):
         css_provider = Gtk.CssProvider()
         css_path = os.path.join(os.path.dirname(__file__), "styles.css")
         
-        # Check if CSS file exists
         if os.path.exists(css_path):
             css_provider.load_from_path(css_path)
+            print(f"Loaded CSS from {css_path}")
         else:
             print(f"Warning: CSS file not found at {css_path}")
-            # Load minimal CSS
             css_provider.load_from_data(b"")
         
-        # In GTK4, use Gdk.Display to add CSS provider
         display = Gdk.Display.get_default()
         if display:
             Gtk.StyleContext.add_provider_for_display(
@@ -54,6 +54,14 @@ class PlanifyWidgetApp(Adw.Application):
         if filter_type == "all":
             filter_type = None
         self.win.refresh_tasks(filter_type)
+    
+    def on_toggle_widget_mode(self, action, param):
+        """Toggle widget mode"""
+        self.win.toggle_widget_mode()
+    
+    def on_quit(self, action, param):
+        """Quit the application"""
+        self.quit()
 
 if __name__ == "__main__":
     app = PlanifyWidgetApp()
