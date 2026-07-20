@@ -1,0 +1,58 @@
+.task-card {
+    background: alpha(@card_bg_color, 0.8);
+    border-radius: 12px;
+    padding: 12px;
+    margin: 6px 0;
+    transition: all 0.2s ease;
+}
+
+.task-card:hover {
+    background: alpha(@card_bg_color, 1.0);
+    box-shadow: 0 2px 8px alpha(black, 0.1);
+}
+
+.task-title {
+    font-size: 1.1em;
+    font-weight: 500;
+}
+
+.task-completed {
+    text-decoration: line-through;
+    opacity: 0.6;
+}
+
+.task-priority {
+    font-size: 0.9em;
+}
+
+.task-due-date {
+    font-size: 0.85em;
+    padding: 2px 8px;
+    background: alpha(@accent_bg_color, 0.1);
+    border-radius: 6px;
+}
+
+.task-overdue {
+    background: alpha(@destructive_color, 0.1);
+    color: @destructive_color;
+}
+
+.task-label {
+    font-size: 0.8em;
+    padding: 2px 6px;
+    background: alpha(@accent_bg_color, 0.15);
+    border-radius: 4px;
+}
+
+.progress-bar {
+    margin: 8px 0;
+}
+
+.flat {
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.flat:hover {
+    opacity: 1.0;
+}
