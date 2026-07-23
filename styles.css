@@ -1,213 +1,195 @@
-/* Widget mode window */
+/* =========================================================
+   Planify Widget — theme
+   Uses Adwaita/libadwaita semantic colors so it adapts
+   automatically to light/dark and accent-color changes.
+   ========================================================= */
+
+/* ---------- Widget mode window ---------- */
 .widget-mode {
-    background: alpha(@window_bg_color, 0.85);
-    border-radius: 16px;
-    border: 1px solid alpha(@borders, 0.4);
-    box-shadow: 0 8px 32px alpha(black, 0.3);
-    backdrop-filter: blur(20px);
+    background: alpha(@window_bg_color, 0.88);
+    border-radius: 18px;
+    border: 1px solid alpha(@borders, 0.35);
+    box-shadow:
+        0 12px 40px alpha(black, 0.35),
+        0 1px 0 alpha(white, 0.04) inset;
+    backdrop-filter: blur(24px);
 }
 
 .main-container {
     background: transparent;
 }
 
-/* Widget header */
+/* ---------- Widget header ---------- */
 .widget-header {
     background: transparent;
-    min-height: 36px;
+    min-height: 40px;
+    padding: 0 4px;
 }
 
-/* Resize handle */
+/* ---------- Resize handle ---------- */
 .resize-handle {
-    background: alpha(@accent_bg_color, 0.3);
-    border-radius: 0 0 16px 0;
-    min-width: 20px;
-    min-height: 20px;
+    background: alpha(@accent_bg_color, 0.25);
+    border-radius: 0 0 18px 0;
+    min-width: 18px;
+    min-height: 18px;
     margin: 0;
+    transition: background 150ms ease;
 }
 
 .resize-handle:hover {
-    background: alpha(@accent_bg_color, 0.6);
+    background: alpha(@accent_bg_color, 0.55);
 }
 
 .resize-handle.widget-mode {
-    opacity: 0.8;
+    opacity: 0.85;
 }
 
-/* Main task card */
+/* =========================================================
+   Task card
+   ========================================================= */
+
 .task-card {
-    background: alpha(@card_bg_color, 0.8);
-    border-radius: 12px;
-    border: 1px solid alpha(@borders, 0.3);
-    transition: all 0.2s ease;
+    background: alpha(@card_bg_color, 0.75);
+    border-radius: 14px;
+    border: 1px solid alpha(@borders, 0.25);
+    transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
 }
 
 .task-card:hover {
-    background: alpha(@card_bg_color, 1.0);
+    background: @card_bg_color;
     border-color: alpha(@borders, 0.5);
-    box-shadow: 0 2px 8px alpha(black, 0.1);
+    box-shadow: 0 3px 10px alpha(black, 0.12);
 }
 
-/* Task states */
-.task-completed-card {
-    opacity: 0.7;
-    background: alpha(@card_bg_color, 0.5);
-}
-
+/* Left accent strip communicates state at a glance.
+   Priority is shown via the dot badge; this strip is
+   reserved for pinned / overdue since those need to
+   interrupt scanning. */
 .task-pinned {
     border-left: 3px solid @accent_bg_color;
 }
 
 .task-overdue-card {
-    border-left: 3px solid @destructive_color;
+    border-left: 3px solid @error_color;
 }
 
-/* Task title */
+.task-completed-card {
+    opacity: 0.6;
+    background: alpha(@card_bg_color, 0.4);
+}
+
+.task-completed-card:hover {
+    opacity: 0.8;
+}
+
+/* ---------- Checkbox ---------- */
+.task-checkbox {
+    margin-top: 1px;
+}
+
+/* ---------- Title & description ---------- */
 .task-title {
-    font-size: 1.05em;
-    font-weight: 500;
+    font-size: 1.02em;
+    font-weight: 600;
     line-height: 1.3;
+    letter-spacing: -0.1px;
 }
 
 .task-completed-text {
     text-decoration: line-through;
-    opacity: 0.6;
+    opacity: 0.55;
+    font-weight: 500;
 }
 
-/* Description preview */
 .task-description {
     font-size: 0.85em;
-    opacity: 0.7;
-    line-height: 1.2;
+    opacity: 0.65;
+    line-height: 1.35;
+    margin-top: 1px;
+}
+
+/* ---------- Meta row (date / labels / project) ---------- */
+.task-meta-row {
     margin-top: 2px;
 }
 
-/* Due date styles */
+.task-meta-icon {
+    opacity: 0.65;
+    -gtk-icon-size: 13px;
+}
+
 .task-due-date {
-    font-size: 0.8em;
-    padding: 2px 8px;
-    background: alpha(@card_fg_color, 0.08);
-    border-radius: 6px;
+    font-size: 0.78em;
+    font-weight: 500;
+    padding: 3px 9px;
+    background: alpha(@card_fg_color, 0.07);
+    border-radius: 8px;
 }
 
 .task-due-today {
-    background: alpha(@accent_bg_color, 0.15);
-    color: @accent_bg_color;
-    font-weight: 500;
+    background: alpha(@accent_bg_color, 0.16);
+    color: @accent_color;
+    font-weight: 600;
 }
 
 .task-due-tomorrow {
-    background: alpha(@accent_bg_color, 0.08);
+    background: alpha(@accent_bg_color, 0.09);
+    color: alpha(@accent_color, 0.9);
 }
 
 .task-overdue {
-    background: alpha(@destructive_color, 0.1);
-    color: @destructive_color;
-    font-weight: 500;
+    background: alpha(@error_color, 0.14);
+    color: @error_color;
+    font-weight: 600;
 }
 
-/* Labels */
+/* ---------- Labels / tags ---------- */
 .task-label {
-    font-size: 0.75em;
-    padding: 2px 6px;
+    font-size: 0.74em;
+    font-weight: 500;
+    padding: 3px 8px;
     background: alpha(@accent_bg_color, 0.12);
-    border-radius: 4px;
-    color: @accent_bg_color;
+    color: @accent_color;
+    border-radius: 6px;
 }
 
-/* Project */
+/* ---------- Project ---------- */
 .task-project {
-    font-size: 0.8em;
-    opacity: 0.8;
-    font-style: italic;
+    font-size: 0.78em;
+    opacity: 0.6;
+    font-weight: 500;
 }
 
-/* Priority badge */
-.priority-badge {
-    font-size: 0.8em;
-    margin-left: 4px;
+/* ---------- Priority dot ---------- */
+.priority-dot {
+    font-size: 0.7em;
+    margin-left: 2px;
 }
 
-/* Pin icon */
+.priority-dot-high   { color: @error_color; }
+.priority-dot-medium { color: @warning_color; }
+.priority-dot-low    { color: @success_color; }
+
+/* ---------- Pin icon ---------- */
 .pin-icon {
-    color: @accent_bg_color;
-    opacity: 0.8;
+    color: @accent_color;
+    opacity: 0.9;
+    -gtk-icon-size: 14px;
 }
 
-/* Filter chips */
-.filter-chip {
-    padding: 3px 10px;
-    border-radius: 14px;
-    font-size: 0.8em;
-    min-height: 28px;
-    background: alpha(@card_bg_color, 0.6);
-    border: 1px solid alpha(@borders, 0.3);
-    transition: all 0.2s ease;
+/* ---------- Card action buttons (reveal on hover) ---------- */
+.card-actions {
+    opacity: 0;
+    transition: opacity 150ms ease;
 }
 
-.filter-chip:hover {
-    background: alpha(@card_bg_color, 0.9);
-    border-color: alpha(@borders, 0.5);
+.task-card:hover .card-actions {
+    opacity: 1;
 }
 
-.filter-chip-active {
-    background: @accent_bg_color;
-    color: @accent_fg_color;
-    border-color: @accent_bg_color;
-}
-
-.filter-icon {
-    opacity: 0.7;
-    margin-right: 2px;
-}
-
-.filter-label {
-    font-size: 0.85em;
-    font-weight: 500;
-}
-
-.filter-chip-active .filter-icon,
-.filter-chip-active .filter-label {
-    opacity: 1.0;
-    color: @accent_fg_color;
-}
-
-/* Stats label */
-.stats-label {
-    font-size: 0.95em;
-    font-weight: 500;
-}
-
-/* Progress bar */
-.progress-bar {
-    margin: 2px 0;
-}
-
-/* Results count */
-.results-count {
-    font-size: 0.8em;
-    opacity: 0.6;
-    font-style: italic;
-}
-
-/* Empty state */
-.empty-state {
-    font-size: 1.1em;
-    opacity: 0.5;
-    padding: 40px;
-}
-
-/* Sync status */
-.sync-status {
-    font-size: 1.2em;
-    margin: 0 8px;
-    opacity: 0.7;
-}
-
-/* Action buttons */
 .flat {
-    opacity: 0.6;
-    transition: opacity 0.2s;
+    opacity: 0.7;
+    transition: opacity 150ms ease, background 150ms ease;
 }
 
 .flat:hover {
@@ -216,7 +198,149 @@
 
 .circular {
     border-radius: 999px;
-    min-width: 32px;
-    min-height: 32px;
+    min-width: 30px;
+    min-height: 30px;
     padding: 4px;
+}
+
+/* =========================================================
+   Filter chips
+   ========================================================= */
+
+.filter-chip {
+    padding: 4px 12px;
+    border-radius: 16px;
+    font-size: 0.8em;
+    min-height: 28px;
+    background: alpha(@card_bg_color, 0.55);
+    border: 1px solid alpha(@borders, 0.25);
+    transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+
+.filter-chip:hover {
+    background: alpha(@card_bg_color, 0.9);
+    border-color: alpha(@borders, 0.5);
+}
+
+.filter-chip-active {
+    background: linear-gradient(135deg, @accent_bg_color, shade(@accent_bg_color, 0.88));
+    color: @accent_fg_color;
+    border-color: transparent;
+    box-shadow: 0 2px 6px alpha(@accent_bg_color, 0.35);
+}
+
+.filter-icon {
+    opacity: 0.65;
+    margin-right: 1px;
+    -gtk-icon-size: 14px;
+}
+
+.filter-label {
+    font-size: 0.85em;
+    font-weight: 600;
+}
+
+.filter-chip-active .filter-icon,
+.filter-chip-active .filter-label {
+    opacity: 1.0;
+    color: @accent_fg_color;
+}
+
+/* =========================================================
+   Statistics / progress
+   ========================================================= */
+
+.stats-label {
+    font-size: 0.95em;
+    font-weight: 600;
+}
+
+/* ---------- "Apple widget" stats card ----------
+   A fixed gradient card, independent of the system accent color —
+   deliberately, the way a lock-screen widget always keeps its own
+   look regardless of wallpaper or theme. Holds the four
+   CircularProgress rings (see ui/circular_progress.py). */
+.stats-widget-card {
+    background: linear-gradient(125deg,
+        #7c2fc4 0%,
+        #a734c2 38%,
+        #d2569e 68%,
+        #ef8a63 100%);
+    border-radius: 20px;
+    padding: 18px 10px 14px 10px;
+    box-shadow:
+        0 10px 28px alpha(black, 0.28),
+        0 1px 0 alpha(white, 0.08) inset;
+}
+
+.circular-progress {
+    padding: 2px 4px;
+}
+
+.ring-icon {
+    color: white;
+    opacity: 0.95;
+}
+
+.ring-value-label {
+    color: white;
+    font-size: 0.92em;
+    font-weight: 700;
+    margin-top: 2px;
+}
+
+.ring-caption-label {
+    color: alpha(white, 0.72);
+    font-size: 0.7em;
+    font-weight: 500;
+}
+
+/* ---------- Results count ---------- */
+.results-count {
+    font-size: 0.8em;
+    opacity: 0.55;
+    font-style: italic;
+}
+
+/* ---------- Empty state ---------- */
+.empty-state-icon {
+    opacity: 0.35;
+    -gtk-icon-size: 48px;
+    margin-bottom: 4px;
+}
+
+.empty-state {
+    font-size: 1.05em;
+    opacity: 0.5;
+    padding: 8px 40px 40px 40px;
+}
+
+/* ---------- Sync status ---------- */
+.sync-status {
+    font-size: 1.15em;
+    margin: 0 8px;
+    opacity: 0.75;
+}
+
+/* =========================================================
+   Task dialog
+   ========================================================= */
+
+.dialog-section-label {
+    font-size: 0.78em;
+    font-weight: 700;
+    opacity: 0.55;
+    letter-spacing: 0.4px;
+    margin-top: 6px;
+}
+
+.dialog-field-group {
+    background: alpha(@card_bg_color, 0.5);
+    border-radius: 12px;
+    border: 1px solid alpha(@borders, 0.25);
+    padding: 2px;
+}
+
+entry, .dialog-entry {
+    min-height: 34px;
 }

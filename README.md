@@ -10,6 +10,7 @@ A native GTK4 + Libadwaita desktop companion for **Planify** that lets you manag
 - Live synchronization with the Planify database
 - GTK4 + Libadwaita native interface
 
+
 ## 🚀 Installation
 
 ### Prerequisites

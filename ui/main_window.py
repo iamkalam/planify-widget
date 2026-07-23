@@ -5,6 +5,7 @@ from gi.repository import Gtk, Adw, GLib, Gio, Gdk
 from controllers.task_controller import TaskController
 from ui.task_card import TaskCard
 from ui.task_dialog import TaskDialog
+from ui.circular_progress import CircularProgress
 import os
 
 class MainWindow(Adw.ApplicationWindow):
@@ -230,25 +231,37 @@ class MainWindow(Adw.ApplicationWindow):
         filter_frame.append(self.filter_flowbox)
         self.main_box.append(filter_frame)
         
-        # Statistics
-        stats_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
-        stats_box.set_margin_top(4)
-        stats_box.set_margin_bottom(4)
-        stats_box.set_margin_start(24)
-        stats_box.set_margin_end(24)
-        
-        self.stats_label = Gtk.Label()
-        self.stats_label.add_css_class("stats-label")
-        self.stats_label.set_halign(Gtk.Align.CENTER)
-        
-        self.progress_bar = Gtk.ProgressBar()
-        self.progress_bar.set_show_text(True)
-        self.progress_bar.add_css_class("osd")
-        self.progress_bar.set_size_request(-1, 6)
-        
-        stats_box.append(self.stats_label)
-        stats_box.append(self.progress_bar)
-        
+        # Statistics — an "Apple widget" style card: a fixed gradient
+        # background (independent of system accent, like a lock-screen
+        # widget) holding four circular rings for at-a-glance progress.
+        stats_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=0)
+        stats_box.set_margin_top(6)
+        stats_box.set_margin_bottom(6)
+        stats_box.set_margin_start(16)
+        stats_box.set_margin_end(16)
+        stats_box.add_css_class("stats-widget-card")
+
+        rings_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
+        rings_row.set_homogeneous(True)
+        rings_row.set_halign(Gtk.Align.FILL)
+
+        self.ring_completed = CircularProgress(icon_name="emblem-ok-symbolic")
+        self.ring_completed.set_caption("Completed")
+
+        self.ring_active = CircularProgress(icon_name="view-list-symbolic")
+        self.ring_active.set_caption("Active")
+
+        self.ring_today = CircularProgress(icon_name="starred-symbolic")
+        self.ring_today.set_caption("Today")
+
+        self.ring_overdue = CircularProgress(icon_name="dialog-warning-symbolic")
+        self.ring_overdue.set_caption("Overdue")
+
+        for ring in (self.ring_completed, self.ring_active, self.ring_today, self.ring_overdue):
+            rings_row.append(ring)
+
+        stats_box.append(rings_row)
+
         self.main_box.append(stats_box)
         
         # Separator
@@ -279,13 +292,22 @@ class MainWindow(Adw.ApplicationWindow):
         self.main_box.append(scrolled_window)
         
         # Empty state
+        empty_box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=2)
+        empty_box.set_halign(Gtk.Align.CENTER)
+        empty_box.set_valign(Gtk.Align.CENTER)
+        empty_box.set_vexpand(True)
+        empty_box.set_visible(False)
+        self.empty_box = empty_box
+
+        empty_icon = Gtk.Image.new_from_icon_name("emblem-ok-symbolic")
+        empty_icon.add_css_class("empty-state-icon")
+        empty_box.append(empty_icon)
+
         self.empty_label = Gtk.Label(label="No tasks found")
-        self.empty_label.set_halign(Gtk.Align.CENTER)
-        self.empty_label.set_valign(Gtk.Align.CENTER)
         self.empty_label.add_css_class("empty-state")
-        self.empty_label.set_vexpand(True)
-        self.empty_label.set_visible(False)
-        self.main_box.append(self.empty_label)
+        empty_box.append(self.empty_label)
+
+        self.main_box.append(empty_box)
         
         # Add task button
         add_button = Gtk.Button(label="+ Add Task")
@@ -426,13 +448,13 @@ class MainWindow(Adw.ApplicationWindow):
                 self.results_label.set_visible(False)
             
             if task_count == 0:
-                self.empty_label.set_visible(True)
+                self.empty_box.set_visible(True)
                 if search_query:
                     self.empty_label.set_label(f"No tasks matching '{search_query}'")
                 else:
-                    self.empty_label.set_label("No tasks found")
+                    self.empty_label.set_label("All clear! Add a task to get started.")
             else:
-                self.empty_label.set_visible(False)
+                self.empty_box.set_visible(False)
                 
                 for task in tasks:
                     task_card = TaskCard(task)
@@ -445,27 +467,28 @@ class MainWindow(Adw.ApplicationWindow):
             print(f"Error refreshing tasks: {e}")
     
     def update_statistics(self, stats):
-        """Update statistics display"""
+        """Update the four circular-ring stats"""
         completed = stats['completed']
         total = stats['total']
         overdue = stats.get('overdue', 0)
         today = stats.get('today', 0)
-        
-        stats_text = f"{completed} / {total} Completed"
-        if overdue > 0:
-            stats_text += f"  •  {overdue} Overdue"
-        if today > 0:
-            stats_text += f"  •  {today} Today"
-        
-        self.stats_label.set_text(stats_text)
-        
-        if total > 0:
-            fraction = completed / total
-            self.progress_bar.set_fraction(fraction)
-            self.progress_bar.set_text(f"{int(fraction * 100)}%")
-        else:
-            self.progress_bar.set_fraction(0)
-            self.progress_bar.set_text("0%")
+        active = max(0, total - completed)
+
+        completed_fraction = (completed / total) if total > 0 else 0
+        self.ring_completed.set_fraction(completed_fraction)
+        self.ring_completed.set_value_text(f"{int(completed_fraction * 100)}%")
+
+        active_fraction = (active / total) if total > 0 else 0
+        self.ring_active.set_fraction(active_fraction)
+        self.ring_active.set_value_text(str(active))
+
+        today_fraction = (today / total) if total > 0 else 0
+        self.ring_today.set_fraction(today_fraction)
+        self.ring_today.set_value_text(str(today))
+
+        overdue_fraction = (overdue / total) if total > 0 else 0
+        self.ring_overdue.set_fraction(overdue_fraction)
+        self.ring_overdue.set_value_text(str(overdue))
     
     def on_task_toggled(self, task_card, task_id, checked):
         """Handle task completion toggle"""
