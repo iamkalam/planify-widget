@@ -2,6 +2,7 @@ import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, GLib, GObject
+from ui.icon_utils import themed_icon, icon_button
 from datetime import datetime, timedelta
 import json
 
@@ -162,8 +163,7 @@ class TaskCard(Gtk.Box):
 
         # Pin indicator
         if self.pinned:
-            pin_icon = Gtk.Image.new_from_icon_name("pin-symbolic")
-            pin_icon.add_css_class("pin-icon")
+            pin_icon = themed_icon(["pin-symbolic", "view-pin-symbolic", "starred-symbolic"], pixel_size=14, css_class="pin-icon")
             title_row.append(pin_icon)
 
         # Task title
@@ -209,8 +209,10 @@ class TaskCard(Gtk.Box):
                     date_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
                     date_box.add_css_class("task-due-date")
 
-                    date_icon = Gtk.Image.new_from_icon_name("month-symbolic")
-                    date_icon.add_css_class("task-meta-icon")
+                    date_icon = themed_icon(
+                        ["month-symbolic", "x-office-calendar-symbolic", "office-calendar-symbolic", "alarm-symbolic"],
+                        pixel_size=13, css_class="task-meta-icon"
+                    )
                     date_box.append(date_icon)
 
                     date_label = Gtk.Label(label=date_text)
@@ -245,8 +247,7 @@ class TaskCard(Gtk.Box):
                 project_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=3)
                 project_box.add_css_class("task-project")
 
-                project_icon = Gtk.Image.new_from_icon_name("folder-symbolic")
-                project_icon.add_css_class("task-meta-icon")
+                project_icon = themed_icon(["folder-symbolic", "folder"], pixel_size=13, css_class="task-meta-icon")
                 project_box.append(project_icon)
 
                 project_label = Gtk.Label(label=self.project_name)
@@ -264,20 +265,19 @@ class TaskCard(Gtk.Box):
         actions_box.add_css_class("card-actions")
 
         # Edit button
-        edit_button = Gtk.Button()
-        edit_button.set_icon_name("document-edit-symbolic")
-        edit_button.add_css_class("flat")
-        edit_button.add_css_class("circular")
-        edit_button.set_tooltip_text("Edit task")
+        edit_button = icon_button(
+            ["document-edit-symbolic", "edit-symbolic"],
+            css_classes=["flat", "circular"],
+            tooltip="Edit task"
+        )
         edit_button.connect("clicked", self.on_edit_clicked)
 
         # Delete button
-        delete_button = Gtk.Button()
-        delete_button.set_icon_name("user-trash-symbolic")
-        delete_button.add_css_class("flat")
-        delete_button.add_css_class("circular")
-        delete_button.add_css_class("destructive-action")
-        delete_button.set_tooltip_text("Delete task")
+        delete_button = icon_button(
+            ["user-trash-symbolic", "edit-delete-symbolic"],
+            css_classes=["flat", "circular", "destructive-action"],
+            tooltip="Delete task"
+        )
         delete_button.connect("clicked", self.on_delete_clicked)
 
         actions_box.append(edit_button)

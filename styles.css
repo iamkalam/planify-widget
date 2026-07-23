@@ -262,10 +262,10 @@
    CircularProgress rings (see ui/circular_progress.py). */
 .stats-widget-card {
     background: linear-gradient(125deg,
-        #7c2fc4 0%,
-        #a734c2 38%,
-        #d2569e 68%,
-        #ef8a63 100%);
+        #0d7a3e 0%,
+        #16a34a 35%,
+        #22c55e 68%,
+        #4ade80 100%);
     border-radius: 20px;
     padding: 18px 10px 14px 10px;
     box-shadow:

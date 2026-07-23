@@ -6,6 +6,7 @@ from controllers.task_controller import TaskController
 from ui.task_card import TaskCard
 from ui.task_dialog import TaskDialog
 from ui.circular_progress import CircularProgress
+from ui.icon_utils import themed_icon, icon_button
 import os
 
 class MainWindow(Adw.ApplicationWindow):
@@ -150,10 +151,11 @@ class MainWindow(Adw.ApplicationWindow):
         header.add_css_class("widget-header")
         
         # Widget mode toggle button
-        widget_button = Gtk.Button()
-        widget_button.set_icon_name("window-pop-out-symbolic")
-        widget_button.add_css_class("flat")
-        widget_button.set_tooltip_text("Toggle Widget Mode (Ctrl+W)")
+        widget_button = icon_button(
+            ["window-pop-out-symbolic", "view-restore-symbolic"],
+            css_classes=["flat"],
+            tooltip="Toggle Widget Mode (Ctrl+W)"
+        )
         widget_button.connect("clicked", lambda b: self.toggle_widget_mode())
         header.pack_start(widget_button)
         
@@ -165,7 +167,7 @@ class MainWindow(Adw.ApplicationWindow):
         
         # Project filter button
         self.project_button = Gtk.MenuButton()
-        self.project_button.set_icon_name("folder-symbolic")
+        self.project_button.set_child(themed_icon(["folder-symbolic", "folder"], pixel_size=16))
         self.project_button.set_tooltip_text("Filter by project")
         header.pack_end(self.project_button)
         
@@ -184,10 +186,11 @@ class MainWindow(Adw.ApplicationWindow):
         self.search_entry.set_hexpand(True)
         self.search_entry.set_size_request(-1, 32)
         
-        clear_button = Gtk.Button()
-        clear_button.set_icon_name("edit-clear-symbolic")
-        clear_button.add_css_class("flat")
-        clear_button.set_tooltip_text("Clear search")
+        clear_button = icon_button(
+            ["edit-clear-symbolic", "edit-clear-all-symbolic"],
+            css_classes=["flat"],
+            tooltip="Clear search"
+        )
         clear_button.connect("clicked", self.on_clear_search)
         
         search_box.append(self.search_entry)
@@ -211,13 +214,13 @@ class MainWindow(Adw.ApplicationWindow):
         self.filter_flowbox.set_hexpand(True)
         
         filters = [
-            ("all", "All", "view-list-symbolic"),
-            ("active", "Active", "task-due-symbolic"),
-            ("today", "Today", "starred-symbolic"),
-            ("upcoming", "Upcoming", "go-up-symbolic"),
-            ("overdue", "Overdue", "dialog-warning-symbolic"),
-            ("completed", "Done", "emblem-ok-symbolic"),
-            ("high_priority", "Priority", "important-symbolic"),
+            ("all", "All", ["view-list-symbolic", "format-justify-fill-symbolic"]),
+            ("active", "Active", ["view-list-symbolic", "media-playback-start-symbolic"]),
+            ("today", "Today", ["appointment-soon-symbolic", "x-office-calendar-symbolic", "office-calendar-symbolic", "alarm-symbolic"]),
+            ("upcoming", "Upcoming", ["go-up-symbolic", "go-next-symbolic"]),
+            ("overdue", "Overdue", ["dialog-warning-symbolic", "software-update-urgent-symbolic"]),
+            ("completed", "Done", ["object-select-symbolic", "emblem-ok-symbolic", "emblem-default-symbolic"]),
+            ("high_priority", "Priority", ["important-symbolic", "software-update-urgent-symbolic"]),
         ]
         
         for filter_id, label, icon in filters:
@@ -245,16 +248,16 @@ class MainWindow(Adw.ApplicationWindow):
         rings_row.set_homogeneous(True)
         rings_row.set_halign(Gtk.Align.FILL)
 
-        self.ring_completed = CircularProgress(icon_name="emblem-ok-symbolic")
+        self.ring_completed = CircularProgress(icon_names=["object-select-symbolic", "emblem-ok-symbolic", "emblem-default-symbolic"])
         self.ring_completed.set_caption("Completed")
 
-        self.ring_active = CircularProgress(icon_name="view-list-symbolic")
+        self.ring_active = CircularProgress(icon_names=["view-list-symbolic", "media-playback-start-symbolic"])
         self.ring_active.set_caption("Active")
 
-        self.ring_today = CircularProgress(icon_name="starred-symbolic")
+        self.ring_today = CircularProgress(icon_names=["appointment-soon-symbolic", "x-office-calendar-symbolic", "office-calendar-symbolic", "alarm-symbolic"])
         self.ring_today.set_caption("Today")
 
-        self.ring_overdue = CircularProgress(icon_name="dialog-warning-symbolic")
+        self.ring_overdue = CircularProgress(icon_names=["dialog-warning-symbolic", "software-update-urgent-symbolic"])
         self.ring_overdue.set_caption("Overdue")
 
         for ring in (self.ring_completed, self.ring_active, self.ring_today, self.ring_overdue):
@@ -299,8 +302,7 @@ class MainWindow(Adw.ApplicationWindow):
         empty_box.set_visible(False)
         self.empty_box = empty_box
 
-        empty_icon = Gtk.Image.new_from_icon_name("emblem-ok-symbolic")
-        empty_icon.add_css_class("empty-state-icon")
+        empty_icon = themed_icon(["object-select-symbolic", "emblem-ok-symbolic"], pixel_size=48, css_class="empty-state-icon")
         empty_box.append(empty_icon)
 
         self.empty_label = Gtk.Label(label="No tasks found")
@@ -322,16 +324,14 @@ class MainWindow(Adw.ApplicationWindow):
         
         self.set_content(self.main_box)
     
-    def create_filter_chip(self, filter_id, label, icon_name):
+    def create_filter_chip(self, filter_id, label, icon_names):
         """Create a compact filter chip button"""
         button = Gtk.Button()
         
         chip_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=4)
         
-        if icon_name:
-            icon = Gtk.Image.new_from_icon_name(icon_name)
-            icon.set_pixel_size(14)
-            icon.add_css_class("filter-icon")
+        if icon_names:
+            icon = themed_icon(icon_names, pixel_size=14, css_class="filter-icon")
             chip_box.append(icon)
         
         label_widget = Gtk.Label(label=label)

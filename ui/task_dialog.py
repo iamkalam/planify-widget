@@ -2,6 +2,7 @@ import gi
 gi.require_version('Gtk', '4.0')
 gi.require_version('Adw', '1')
 from gi.repository import Gtk, Adw, GLib
+from ui.icon_utils import icon_button
 from datetime import datetime
 
 class TaskDialog(Adw.Dialog):
@@ -83,8 +84,9 @@ class TaskDialog(Adw.Dialog):
         self.due_entry.set_placeholder_text("YYYY-MM-DD")
         self.due_entry.set_hexpand(True)
 
-        self.calendar_button = Gtk.Button()
-        self.calendar_button.set_icon_name("x-office-calendar-symbolic")
+        self.calendar_button = icon_button(
+            ["x-office-calendar-symbolic", "office-calendar-symbolic", "month-symbolic"]
+        )
         self.calendar_button.connect("clicked", self.show_calendar)
 
         date_box.append(self.due_entry)
